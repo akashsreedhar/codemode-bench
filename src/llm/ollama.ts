@@ -59,6 +59,9 @@ export class OllamaBackend implements LLMBackend {
       messages: this.toWire(req.messages),
       tools: req.tools.map((t) => ({ type: "function", function: { name: t.name, description: t.description, parameters: t.parameters } })),
       stream: false,
+      // Fail loudly instead of silently dropping history when the context window is full.
+      truncate: false,
+      shift: false,
       ...(c.think !== undefined ? { think: c.think } : {}),
       options: {
         seed: req.seed,
@@ -81,10 +84,10 @@ export class OllamaBackend implements LLMBackend {
     await this.limiter.acquire();
     const started = Date.now();
     const json = await withRetry(async () => {
-      const res = await fetch(`${this.baseUrl}/api/chat`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+      const res = await fetch(`${this.baseUrl}/api/chat`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body), signal: req.signal });
       const text = await res.text();
       if (!res.ok) {
-        if (/context|too long|exceeds/i.test(text) && res.status === 400) throw new ContextOverflowError(text);
+        if (res.status >= 400 && res.status < 500 && /context|too long|exceeds/i.test(text)) throw new ContextOverflowError(text);
         throw new ProviderError(`Ollama ${res.status}: ${text.slice(0, 500)}`, res.status);
       }
       return JSON.parse(text) as OllamaChatResponse;

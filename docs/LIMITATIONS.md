@@ -29,6 +29,7 @@ Every benchmark makes trade-offs. These are the ones that matter most when inter
 
 ## Implementation choices
 
+- The per-run time limit (900 s) depends on hardware: a slower GPU can turn a long but eventually successful run into a `time_limit` failure. These failures are reported separately so they can be excluded or re-run on faster hardware.
 - The turn budget (20) and result cap (100k characters) are design parameters. Different values would shift absolute success rates, especially for loop tasks in direct mode.
 - The sandbox runs QuickJS, not V8. Its JavaScript support is close to ES2023, but it is slower than V8 for heavy computation. No task here is computationally heavy.
 - Tool search (condition B) uses simple keyword scoring rather than embeddings. A stronger retriever could improve B.

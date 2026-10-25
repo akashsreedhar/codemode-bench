@@ -35,6 +35,8 @@ export const ExperimentConfigSchema = z.object({
   maxTurns: z.number().int().min(1).default(20),
   lenientParsing: z.boolean().default(true),
   maxResultChars: z.number().int().positive().default(100_000),
+  /** Wall-clock safety limit per run, in seconds. */
+  maxRunSeconds: z.number().int().positive().default(900),
   sandbox: z
     .object({
       timeoutMs: z.number().int().positive().default(30_000),

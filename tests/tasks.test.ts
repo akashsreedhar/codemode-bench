@@ -60,6 +60,18 @@ describe("task suite", () => {
     expect(r.failureMode).toBe("turn_limit");
   });
 
+  it("stops at the per-run time limit", async () => {
+    const task = TASKS.find((t) => t.id === "lookup-customer-email")!;
+    const slow: BackendFactory = () =>
+      new ScriptedBackend("slow", "slow", async () => {
+        await new Promise((r) => setTimeout(r, 700));
+        return { toolCalls: [{ name: "crm_get_customer", arguments: { customer_id: "C001" } }] };
+      });
+    const r = await runEpisode({ ...spec(task, "direct"), maxRunSeconds: 1 }, slow);
+    expect(r.failureMode).toBe("time_limit");
+    expect(r.turns).toBeLessThan(20);
+  });
+
   it("recovers code blocks from plain-text replies when lenient parsing is on", async () => {
     const task = TASKS.find((t) => t.id === "lookup-customer-email")!;
     const textual: BackendFactory = () =>

@@ -19,6 +19,8 @@ export interface EpisodeSpec {
   contextWindow?: number;
   sandbox: Partial<SandboxOptions>;
   maxResultChars: number;
+  /** Wall-clock limit for the whole run; exceeding it is recorded as failureMode "time_limit". */
+  maxRunSeconds?: number;
 }
 
 /** Everything a backend factory may need, e.g. to script the reference solution. */
@@ -31,7 +33,7 @@ export interface EpisodeContext {
 export type BackendFactory = (ctx: EpisodeContext) => LLMBackend;
 
 export type Outcome = "success" | "failure" | "error";
-export type FailureMode = "wrong_result" | "no_answer" | "turn_limit" | "context_overflow";
+export type FailureMode = "wrong_result" | "no_answer" | "turn_limit" | "context_overflow" | "time_limit";
 
 export interface TurnRecord {
   turn: number;
@@ -140,8 +142,15 @@ export async function runEpisode(spec: EpisodeSpec, backendFactory: BackendFacto
   };
 
   let finished = false;
+  const abort = new AbortController();
+  const timer = spec.maxRunSeconds ? setTimeout(() => abort.abort(), spec.maxRunSeconds * 1000) : undefined;
   try {
     for (let turn = 1; turn <= spec.maxTurns; turn++) {
+      if (abort.signal.aborted) {
+        result.failureMode = "time_limit";
+        finished = true;
+        break;
+      }
       const tools = condition.tools();
       const chars = requestChars(messages, JSON.stringify(tools));
       result.promptChars.total += chars;
@@ -150,8 +159,13 @@ export async function runEpisode(spec: EpisodeSpec, backendFactory: BackendFacto
 
       let response;
       try {
-        response = await backend.chat({ messages, tools, seed: spec.seed });
+        response = await backend.chat({ messages, tools, seed: spec.seed, signal: abort.signal });
       } catch (err) {
+        if (abort.signal.aborted) {
+          result.failureMode = "time_limit";
+          finished = true;
+          break;
+        }
         if (err instanceof ContextOverflowError) {
           result.failureMode = "context_overflow";
           result.contextSaturated = true;
@@ -222,6 +236,7 @@ export async function runEpisode(spec: EpisodeSpec, backendFactory: BackendFacto
     result.outcome = "error";
     result.providerError = err instanceof Error ? err.message : String(err);
   } finally {
+    clearTimeout(timer);
     result.piiExposed = countPii(messages, initial);
     result.wallMs = Date.now() - started;
     await pool.close();

@@ -33,7 +33,7 @@ H1–H6 are tested in the pilot (`configs/pilot.yaml`). H7 needs condition B and
   - number of turns
   - wall time
   - PII exposure count
-  - failure mode: `wrong_result`, `no_answer`, `turn_limit`, `context_overflow`
+  - failure mode: `wrong_result`, `no_answer`, `turn_limit`, `context_overflow`, `time_limit`
   - per-call error kinds: unknown tool, invalid arguments, syntax error, runtime error, hallucinated API, timeout
 
 ## Analysis plan
@@ -54,4 +54,12 @@ H1–H6 are tested in the pilot (`configs/pilot.yaml`). H7 needs condition B and
 
 ## Amendments
 
-_None._
+### 2026-10-25: context handling, output cap and run time limit (before any results were reported)
+
+A 35-run smoke start of the pilot showed that, with large tool results, Ollama's default behaviour is to silently truncate the prompt and shift the context window once it fills. The model then continues from partially deleted history. A single run could take more than an hour, and its outcome would reflect discarded context rather than the condition under test. The partial run was discarded (no results from it were analysed or published), and the pilot was restarted from zero with these changes:
+
+1. **No silent truncation.** Requests to Ollama set `truncate: false` and `shift: false`. A request that does not fit the context window now ends the run with failure mode `context_overflow`, which is recorded and reported.
+2. **Output cap.** `maxTokens` (Ollama `num_predict`) lowered from 4,096 to 2,048 per turn.
+3. **Run time limit.** Each run has a wall-clock safety limit of 900 s (`maxRunSeconds`). Exceeding it ends the run with failure mode `time_limit`. Because this limit depends on hardware speed, `time_limit` failures are reported separately.
+
+The hypotheses, task set, conditions and every other setting are unchanged.

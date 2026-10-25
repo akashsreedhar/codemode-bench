@@ -104,7 +104,7 @@ Requirements: Node.js ≥ 20. For real model runs you also need [Ollama](https:/
 
 ```bash
 npm ci
-npm test                 # 255 tests: sandbox isolation, codegen, servers, verifiers, providers, runner
+npm test                 # 257 tests: sandbox isolation, codegen, servers, verifiers, providers, runner
 npm run bench:ci         # every task × every condition via reference solutions (no model, ~15 s)
 npm run tasks            # list the task suite
 npm run sizes            # static context cost per condition
@@ -158,7 +158,8 @@ npm run inspect -- --server "npx -y @modelcontextprotocol/server-filesystem ." -
 
 ## Methodology at a glance
 
-- **Same everything except the interaction mode.** The base system prompt, task prompt, servers, data, turn budget (20), sampling settings and tool-result cap (100k characters, applied to tool results and sandbox output alike) are shared across conditions.
+- **Same everything except the interaction mode.** The base system prompt, task prompt, servers, data, turn budget (20), run time limit (900 s), sampling settings and tool-result cap (100k characters, applied to tool results and sandbox output alike) are shared across conditions.
+- **No silent truncation.** A conversation that outgrows the model's context window is recorded as a `context_overflow` failure instead of being truncated without notice.
 - **Realistic APIs.** List endpoints are paginated (`limit`/`offset` with a `total`), return verbose records, and validate their inputs. Errors come back to the model, as they would from a real MCP server.
 - **Lenient parsing, recorded.** Small models sometimes write a tool call or code block as plain text. With `lenientParsing: true` (the default), the harness recovers these in every condition and counts each recovery, so strict and lenient behaviour can both be analysed.
 - **Statistics.** Success rates come with Wilson 95% intervals. Conditions are compared on matched task × seed pairs with an exact McNemar test.

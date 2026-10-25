@@ -97,7 +97,7 @@ export class OpenAICompatibleBackend implements LLMBackend {
     const started = Date.now();
     const completion = await withRetry(async () => {
       try {
-        return await this.client.chat.completions.create(body);
+        return await this.client.chat.completions.create(body, { signal: req.signal });
       } catch (err) {
         if (err instanceof OpenAI.APIError) {
           const msg = `${this.provider} ${err.status ?? ""}: ${err.message}`;

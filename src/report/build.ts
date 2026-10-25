@@ -155,7 +155,7 @@ ${empty ? "" : `<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4
     options: { maintainAspectRatio: false, plugins: { title: { display: true, text: "Mean input tokens per run (provider-reported)", color: text } }, scales: { y: { ticks: { callback: (v) => num(v) } } } } });
 
   const modes = [...new Set(d.failureModes.flatMap((f) => Object.keys(f.counts)))].sort((a, b) => (a === "success" ? -1 : b === "success" ? 1 : a.localeCompare(b)));
-  const modeColors = { success: "#3f9b5c", wrong_result: "#d9534f", no_answer: "#999999", turn_limit: "#e38f2e", context_overflow: "#7a4fb5" };
+  const modeColors = { success: "#3f9b5c", wrong_result: "#d9534f", no_answer: "#999999", turn_limit: "#e38f2e", context_overflow: "#7a4fb5", time_limit: "#5b6b7a" };
   new Chart(document.getElementById("failures"), { type: "bar", data: { labels: d.failureModes.map((f) => f.modelId + " · " + LABELS[f.condition].split(" · ")[0]), datasets: modes.map((mode) => ({ label: mode, backgroundColor: modeColors[mode] || "#888", data: d.failureModes.map((f) => { const n = Object.values(f.counts).reduce((a, b) => a + b, 0); return (f.counts[mode] || 0) / n; }) })) },
     options: { maintainAspectRatio: false, plugins: { title: { display: true, text: "Outcome breakdown", color: text } }, scales: { x: { stacked: true }, y: { stacked: true, min: 0, max: 1, ticks: { callback: (v) => pct(v) } } } } });
 

@@ -53,7 +53,7 @@ All conditions share the base system prompt in `src/conditions/types.ts`, the sa
 
 ## 4. The agent loop
 
-`src/agent/episode.ts` runs at most `maxTurns` model calls (20 in the pilot). On each turn:
+`src/agent/episode.ts` runs at most `maxTurns` model calls (20 in the pilot), within a wall-clock limit of `maxRunSeconds` (900 by default). For Ollama, requests are sent with `truncate: false` and `shift: false`, so a conversation that outgrows the context window fails visibly (`context_overflow`) instead of silently losing history. On each turn:
 
 1. The current messages and tool definitions are sent to the model with the run's seed.
 2. If the reply has tool calls, each is executed and its result appended. Several calls in one reply are executed in order.
@@ -79,7 +79,7 @@ Two checks guard against verifier defects, and both run in CI:
 | Metric | Definition |
 |---|---|
 | `outcome` | `success`, `failure`, or `error` (infrastructure/provider error, excluded from rates) |
-| `failureMode` | `wrong_result`, `no_answer`, `turn_limit`, `context_overflow` |
+| `failureMode` | `wrong_result`, `no_answer`, `turn_limit`, `context_overflow` (the request did not fit the context window), `time_limit` (the run exceeded `maxRunSeconds`) |
 | `promptTokens`, `completionTokens` | Sum over turns, as reported by the provider |
 | `promptChars` | Exact sum over turns of request characters (messages, tool calls and tool definitions) |
 | `turns`, `toolCallsEmitted`, `mcpCalls`, `distractorCalls` | Interaction counts; `mcpCalls` includes calls made from inside the sandbox |

@@ -7,7 +7,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { ResponseCache } from "../src/llm/cache.js";
 import { OllamaBackend } from "../src/llm/ollama.js";
 import { OpenAICompatibleBackend } from "../src/llm/openai-compatible.js";
-import type { ChatRequest } from "../src/llm/types.js";
+import { ContextOverflowError, type ChatRequest } from "../src/llm/types.js";
 
 /** A stub HTTP server that imitates the Ollama and OpenAI chat APIs. */
 let server: Server;
@@ -28,6 +28,9 @@ beforeAll(async () => {
     res.setHeader("content-type", "application/json");
     if (req.url === "/api/tags") {
       res.end(JSON.stringify({ models: [{ name: "qwen3:4b", digest: "abc123def456", details: { family: "qwen3", parameter_size: "4.0B", quantization_level: "Q4_K_M" } }] }));
+    } else if (req.url === "/api/chat" && body.model === "tiny-ctx") {
+      res.statusCode = 400;
+      res.end(JSON.stringify({ error: "request (417 tokens) exceeds the available context size (256 tokens), try increasing it" }));
     } else if (req.url === "/api/chat") {
       res.end(
         JSON.stringify({
@@ -84,6 +87,8 @@ describe("OllamaBackend", () => {
     const sent = requests.filter((x) => x.path === "/api/chat").at(-1)!.body;
     expect(sent.options).toMatchObject({ num_ctx: 16384, seed: 7, temperature: 0.7 });
     expect(sent.think).toBe(false);
+    expect(sent.truncate).toBe(false);
+    expect(sent.shift).toBe(false);
     expect(sent.messages[3]).toMatchObject({ role: "tool", tool_name: "crm_get_customer" });
     expect(r.toolCalls[0]).toMatchObject({ name: "crm_get_customer", arguments: { customer_id: "C017" } });
     expect(r.content).toBe("");
@@ -93,6 +98,11 @@ describe("OllamaBackend", () => {
     const again = await b.chat(request);
     expect(again.cached).toBe(true);
     expect(requests.length).toBe(before);
+  });
+
+  it("reports context overflow instead of silently truncating", async () => {
+    const b = new OllamaBackend({ id: "t", provider: "ollama", model: "tiny-ctx", baseUrl: base, contextWindow: 256 });
+    await expect(b.chat(request)).rejects.toBeInstanceOf(ContextOverflowError);
   });
 
   it("reports model digest and quantisation", async () => {

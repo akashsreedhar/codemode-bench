@@ -16,7 +16,7 @@ models:
     contextWindow: 16384
     temperature: 0.7
     topP: 0.8
-    maxTokens: 4096
+    maxTokens: 2048
     think: false
   - id: qwen3-4b
     provider: ollama
@@ -24,7 +24,7 @@ models:
     contextWindow: 16384
     temperature: 0.7
     topP: 0.8
-    maxTokens: 4096
+    maxTokens: 2048
     think: false
 grids:
   # Main comparison at a moderate tool count: 15 tasks x 2 conditions x 3 seeds x 2 models = 180 runs.

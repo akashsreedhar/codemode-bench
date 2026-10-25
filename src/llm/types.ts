@@ -26,6 +26,8 @@ export interface ChatRequest {
   messages: ChatMessage[];
   tools: ToolDefinition[];
   seed: number;
+  /** Aborts the request (used to enforce the per-run time limit). */
+  signal?: AbortSignal;
 }
 
 export interface Usage {
