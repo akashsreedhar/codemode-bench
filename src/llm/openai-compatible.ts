@@ -1,5 +1,6 @@
 import OpenAI from "openai";
 import { ResponseCache } from "./cache.js";
+import { httpFetch } from "./http.js";
 import { RateLimiter, withRetry } from "./ratelimit.js";
 import {
   ContextOverflowError,
@@ -46,7 +47,7 @@ export class OpenAICompatibleBackend implements LLMBackend {
     const keyEnv = config.apiKeyEnv ?? preset?.apiKeyEnv;
     const apiKey = keyEnv ? process.env[keyEnv] : "not-needed";
     if (keyEnv && !apiKey) throw new Error(`Model '${config.id}': environment variable ${keyEnv} is not set`);
-    this.client = new OpenAI({ baseURL: this.baseUrl, apiKey: apiKey ?? "not-needed", maxRetries: 0, timeout: 600_000 });
+    this.client = new OpenAI({ baseURL: this.baseUrl, apiKey: apiKey ?? "not-needed", maxRetries: 0, timeout: 3_600_000, fetch: httpFetch });
     this.limiter = new RateLimiter(config.requestsPerMinute ?? preset?.requestsPerMinute);
   }
 

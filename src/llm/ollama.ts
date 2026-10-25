@@ -1,4 +1,5 @@
 import { ResponseCache } from "./cache.js";
+import { httpFetch } from "./http.js";
 import { RateLimiter, withRetry } from "./ratelimit.js";
 import {
   ContextOverflowError,
@@ -84,7 +85,7 @@ export class OllamaBackend implements LLMBackend {
     await this.limiter.acquire();
     const started = Date.now();
     const json = await withRetry(async () => {
-      const res = await fetch(`${this.baseUrl}/api/chat`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body), signal: req.signal });
+      const res = await httpFetch(`${this.baseUrl}/api/chat`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body), signal: req.signal });
       const text = await res.text();
       if (!res.ok) {
         if (res.status >= 400 && res.status < 500 && /context|too long|exceeds/i.test(text)) throw new ContextOverflowError(text);
@@ -130,7 +131,7 @@ export class OllamaBackend implements LLMBackend {
   async describe(): Promise<ModelInfo> {
     let tags: { models?: { name: string; model?: string; digest?: string; details?: OllamaDetails }[] };
     try {
-      const res = await fetch(`${this.baseUrl}/api/tags`);
+      const res = await httpFetch(`${this.baseUrl}/api/tags`);
       tags = (await res.json()) as typeof tags;
     } catch (err) {
       throw new ProviderError(`Cannot reach Ollama at ${this.baseUrl}. Is it installed and running ('ollama serve')? (${(err as Error).message})`);
