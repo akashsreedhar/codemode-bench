@@ -1,0 +1,39 @@
+cff-version: 1.2.0
+message: "If you use this benchmark, please cite it as below."
+title: "CodeModeBench: a reproducible benchmark of direct MCP tool calling versus Code Mode"
+type: software
+version: 0.1.0
+date-released: 2026-10-25
+license: MIT
+authors:
+  - name: "CodeModeBench contributors"
+keywords:
+  - model context protocol
+  - llm agents
+  - tool calling
+  - code execution
+  - benchmark
+references:
+  - type: blog
+    title: "Code Mode: the better way to use MCP"
+    authors:
+      - family-names: Varda
+        given-names: Kenton
+      - family-names: Pai
+        given-names: Sunil
+    url: "https://blog.cloudflare.com/code-mode/"
+    year: 2025
+  - type: blog
+    title: "Code execution with MCP: Building more efficient agents"
+    authors:
+      - name: Anthropic
+    url: "https://www.anthropic.com/engineering/code-execution-with-mcp"
+    year: 2025
+  - type: conference-paper
+    title: "Executable Code Actions Elicit Better LLM Agents"
+    authors:
+      - family-names: Wang
+        given-names: Xingyao
+    collection-title: "Proceedings of the 41st International Conference on Machine Learning"
+    url: "https://arxiv.org/abs/2402.01030"
+    year: 2024

@@ -1,0 +1,20 @@
+# Full study. Intended for a free Kaggle GPU notebook (see kaggle/run_sweep.ipynb)
+# or any machine with >= 16 GB of VRAM. Split across sessions with --shard i/n.
+name: full
+description: Qwen3 1.7B-14B, all four conditions, tool-count sweep, all 40 tasks
+maxTurns: 25
+lenientParsing: true
+models:
+  - { id: qwen3-1.7b, provider: ollama, model: "qwen3:1.7b", contextWindow: 32768, temperature: 0.7, topP: 0.8, maxTokens: 4096, think: false }
+  - { id: qwen3-4b, provider: ollama, model: "qwen3:4b", contextWindow: 32768, temperature: 0.7, topP: 0.8, maxTokens: 4096, think: false }
+  - { id: qwen3-8b, provider: ollama, model: "qwen3:8b", contextWindow: 32768, temperature: 0.7, topP: 0.8, maxTokens: 4096, think: false }
+  - { id: qwen3-14b, provider: ollama, model: "qwen3:14b", contextWindow: 32768, temperature: 0.7, topP: 0.8, maxTokens: 4096, think: false }
+grids:
+  - tasks: all
+    conditions: [direct, toolsearch, codemode, codemode_discovery]
+    toolCounts: [20]
+    seeds: [1, 2, 3]
+  - tasks: pilot
+    conditions: [direct, codemode]
+    toolCounts: [5, 50, 150]
+    seeds: [1, 2]

@@ -1,0 +1,29 @@
+{
+  "generatedFrom": {
+    "files": [
+      "results/ci/runs.jsonl"
+    ],
+    "rows": 320,
+    "includedRows": 0,
+    "excluded": {
+      "mock provider (harness tests only)": 320
+    }
+  },
+  "taskSetHash": null,
+  "harnessVersions": [],
+  "gitCommits": [],
+  "dateRange": null,
+  "hardware": [],
+  "models": [],
+  "conditions": [],
+  "toolCounts": [],
+  "overall": [],
+  "byToolCount": [],
+  "byCategory": [],
+  "byChain": [],
+  "paired": [],
+  "failureModes": [],
+  "errorCounts": [],
+  "perTask": [],
+  "infraErrors": 0
+}

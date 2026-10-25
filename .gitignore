@@ -1,0 +1,9 @@
+node_modules/
+dist/
+.cache/
+.env
+*.log
+results/ci/
+reports/ci/
+coverage/
+.DS_Store

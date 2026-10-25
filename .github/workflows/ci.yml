@@ -1,0 +1,39 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [20, 22]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - name: Harness self-test (reference solutions, all tasks × all conditions)
+        run: npm run bench:ci
+      - name: Report pipeline check (mock results, not published)
+        run: npx tsx src/cli.ts report --include-mock --results results/ci --out reports/ci --no-readme
+      - name: Check generated task list is up to date
+        run: |
+          npx tsx src/cli.ts tasks --markdown docs/TASKS.md
+          git diff --exit-code docs/TASKS.md
+      - uses: actions/upload-artifact@v4
+        if: matrix.node == 22
+        with:
+          name: ci-report
+          path: reports/ci/

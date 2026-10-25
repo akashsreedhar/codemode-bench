@@ -1,0 +1,54 @@
+{
+  "name": "codemode-bench",
+  "version": "0.1.0",
+  "description": "A reproducible benchmark comparing direct MCP tool calling with Code Mode (LLM-written code against an MCP-derived TypeScript API).",
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
+  "bin": {
+    "codemode-bench": "dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "bench": "tsx src/cli.ts bench",
+    "bench:ci": "tsx src/cli.ts bench --config configs/ci.yaml",
+    "report": "tsx src/cli.ts report",
+    "inspect": "tsx src/cli.ts inspect",
+    "codegen": "tsx src/cli.ts codegen",
+    "tasks": "tsx src/cli.ts tasks",
+    "sizes": "tsx src/cli.ts sizes"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "llm",
+    "agents",
+    "benchmark",
+    "code-mode",
+    "tool-calling"
+  ],
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.2",
+    "esbuild": "^0.28.2",
+    "openai": "^7.43.0",
+    "quickjs-emscripten": "^0.32.0",
+    "yaml": "^2.9.1",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.5"
+  },
+  "files": [
+    "dist",
+    "configs",
+    "README.md",
+    "LICENSE"
+  ]
+}

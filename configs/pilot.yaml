@@ -1,0 +1,40 @@
+# Pilot study on a consumer laptop (tested target: 4 GB VRAM GPU, 8 GB RAM).
+#
+#   ollama pull qwen3:1.7b && ollama pull qwen3:4b
+#   npm run bench -- --config configs/pilot.yaml
+#
+# The run is resumable: interrupt it at any time and re-run the same command.
+# Sampling follows Qwen3's recommended non-thinking settings.
+name: pilot
+description: Qwen3 1.7B/4B, direct tool calling vs Code Mode, 15 pilot tasks
+maxTurns: 20
+lenientParsing: true
+models:
+  - id: qwen3-1.7b
+    provider: ollama
+    model: qwen3:1.7b
+    contextWindow: 16384
+    temperature: 0.7
+    topP: 0.8
+    maxTokens: 4096
+    think: false
+  - id: qwen3-4b
+    provider: ollama
+    model: qwen3:4b
+    contextWindow: 16384
+    temperature: 0.7
+    topP: 0.8
+    maxTokens: 4096
+    think: false
+grids:
+  # Main comparison at a moderate tool count: 15 tasks x 2 conditions x 3 seeds x 2 models = 180 runs.
+  - tasks: pilot
+    conditions: [direct, codemode]
+    toolCounts: [20]
+    seeds: [1, 2, 3]
+  # Tool-count sweep on the larger model: 15 tasks x 2 conditions x 2 tool counts = 60 runs.
+  - tasks: pilot
+    conditions: [direct, codemode]
+    toolCounts: [5, 50]
+    seeds: [1]
+    models: [qwen3-4b]

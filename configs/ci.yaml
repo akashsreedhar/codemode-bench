@@ -1,0 +1,17 @@
+# Harness self-test. Uses the scripted reference-solution backend (no model,
+# no network, no cost). Proves every task is solvable through every condition.
+# Results from the mock provider are never included in published reports.
+name: ci
+description: Reference solutions through all conditions (harness self-test)
+maxTurns: 20
+output: results/ci
+cache: false
+models:
+  - id: oracle
+    provider: mock
+    model: reference-solution
+grids:
+  - tasks: all
+    conditions: [direct, toolsearch, codemode, codemode_discovery]
+    toolCounts: [5, 50]
+    seeds: [1]

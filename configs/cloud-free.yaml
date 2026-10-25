@@ -1,0 +1,23 @@
+# Optional cross-family check on free API tiers. Requires GROQ_API_KEY and/or
+# GEMINI_API_KEY (see .env.example). Free tiers enforce per-minute and per-day
+# token limits, so this grid is deliberately small and uses low tool counts.
+# Model names change over time: check your provider's model list before running.
+name: cloud-free
+description: Small cross-family check on free API tiers
+maxTurns: 15
+models:
+  - id: groq-gpt-oss-20b
+    provider: groq
+    model: openai/gpt-oss-20b
+    temperature: 0.7
+    requestsPerMinute: 20
+  - id: gemini-flash
+    provider: gemini
+    model: gemini-2.5-flash
+    temperature: 0.7
+    requestsPerMinute: 8
+grids:
+  - tasks: pilot
+    conditions: [direct, codemode]
+    toolCounts: [5]
+    seeds: [1]
