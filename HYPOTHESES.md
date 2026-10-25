@@ -63,3 +63,9 @@ A 35-run smoke start of the pilot showed that, with large tool results, Ollama's
 3. **Run time limit.** Each run has a wall-clock safety limit of 900 s (`maxRunSeconds`). Exceeding it ends the run with failure mode `time_limit`. Because this limit depends on hardware speed, `time_limit` failures are reported separately.
 
 The hypotheses, task set, conditions and every other setting are unchanged.
+
+### 2026-10-25: Code Mode receives code as a fenced block (before any results were reported)
+
+A second smoke start showed that, with Ollama, Code Mode runs very often ended with an empty reply. Reproducing the request showed why. When a small model places TypeScript inside the JSON arguments of an `execute_code` tool call, the unescaped quotes and newlines make the tool call invalid JSON. Ollama's tool-call parser then discards the entire response, so the model's attempt never reaches the harness. Without the tool attached, the same model writes the code as plain text.
+
+Code Mode conditions (C and D) in the pilot and full configs therefore use `codeModeProtocol: text`. The model writes code in a fenced ```ts block in its reply, the harness executes it, and the output is returned in the next message. This is the interaction style of CodeAct and smolagents' CodeAgent. Direct tool calling (A) and tool search (B) still use native function calls, which carry only short JSON arguments and were not affected. The `tool` protocol remains available and is covered by the test suite. All partial results from before this change were discarded.

@@ -54,7 +54,7 @@ export interface RunRecord {
   piiExposed: number;
   truncatedResults: number;
   providerError: string | null;
-  sampling: { temperature?: number; topP?: number; contextWindow?: number; maxTokens?: number; think?: boolean; maxTurns: number; maxRunSeconds: number; lenientParsing: boolean };
+  sampling: { temperature?: number; topP?: number; contextWindow?: number; maxTokens?: number; think?: boolean; maxTurns: number; maxRunSeconds: number; lenientParsing: boolean; codeModeProtocol: "tool" | "text" };
   modelInfo: ModelInfo;
   hardware: HardwareInfo;
   git: GitInfo;
@@ -189,6 +189,7 @@ export async function runBenchmark(config: ExperimentConfig, opts: BenchOptions 
         sandbox: { timeoutMs: config.sandbox.timeoutMs, memoryLimitBytes: config.sandbox.memoryLimitMb * 1024 * 1024, maxHostCalls: config.sandbox.maxHostCalls },
         maxResultChars: config.maxResultChars,
         maxRunSeconds: config.maxRunSeconds,
+        codeProtocol: config.codeModeProtocol,
       },
       run.model.provider === "mock" ? createOracleBackend : () => backends.get(run.model.id)!,
     );
@@ -240,6 +241,7 @@ export async function runBenchmark(config: ExperimentConfig, opts: BenchOptions 
         maxTurns: config.maxTurns,
         maxRunSeconds: config.maxRunSeconds,
         lenientParsing: config.lenientParsing,
+        codeModeProtocol: config.codeModeProtocol,
       },
       modelInfo: infos.get(run.model.id)!,
       hardware,

@@ -37,6 +37,8 @@ export const ExperimentConfigSchema = z.object({
   maxResultChars: z.number().int().positive().default(100_000),
   /** Wall-clock safety limit per run, in seconds. */
   maxRunSeconds: z.number().int().positive().default(900),
+  /** How Code Mode conditions receive code: an execute_code tool call, or a fenced code block in the reply. */
+  codeModeProtocol: z.enum(["tool", "text"]).default("tool"),
   sandbox: z
     .object({
       timeoutMs: z.number().int().positive().default(30_000),

@@ -9,6 +9,8 @@ name: pilot
 description: Qwen3 1.7B/4B, direct tool calling vs Code Mode, 15 pilot tasks
 maxTurns: 20
 lenientParsing: true
+# Code Mode receives code as a fenced block in the reply (see HYPOTHESES.md amendments).
+codeModeProtocol: text
 models:
   - id: qwen3-1.7b
     provider: ollama

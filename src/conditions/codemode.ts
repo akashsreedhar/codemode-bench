@@ -3,7 +3,7 @@ import { runInSandbox, type SandboxErrorKind } from "../codemode/sandbox.js";
 import { stripFences } from "../codemode/transpile.js";
 import type { ToolCall, ToolDefinition } from "../llm/types.js";
 import type { McpPool } from "../mcp/pool.js";
-import { BASE_SYSTEM_PROMPT, type CallErrorKind, type Condition, type ConditionOptions, type HandledCall, type McpCallRecord } from "./types.js";
+import { BASE_SYSTEM_PROMPT, type CallErrorKind, type CodeProtocol, type Condition, type ConditionOptions, type HandledCall, type McpCallRecord } from "./types.js";
 
 export const EXECUTE_CODE_TOOL: ToolDefinition = {
   name: "execute_code",
@@ -15,13 +15,18 @@ export const EXECUTE_CODE_TOOL: ToolDefinition = {
   },
 };
 
-const SANDBOX_RULES = `How to work:
-- Complete tasks by writing TypeScript and running it with the execute_code tool.
+const RUN_INSTRUCTIONS: Record<CodeProtocol, string> = {
+  tool: "- Complete tasks by writing TypeScript and running it with the execute_code tool.",
+  text: "- Complete tasks by writing TypeScript. To run code, reply with exactly one fenced code block (```ts ... ```). It is executed immediately and its output is sent back to you in the next message.",
+};
+
+const sandboxRules = (protocol: CodeProtocol) => `How to work:
+${RUN_INSTRUCTIONS[protocol]}
 - The sandbox provides a global \`codemode\` object. Each method calls the backend tool of the same name and returns a Promise of its result.
 - Top-level await and return are allowed. There is no network, filesystem, timer or module access (fetch, require and import are unavailable).
 - You only see what you print with console.log() and the returned value. Print just the data you need, not whole API responses.
 - Variables do not persist between executions. You may execute code several times.
-- When the task is complete, reply with the final answer as plain text (not code).`;
+- When the task is complete, reply with the final answer as plain text, without a code block.`;
 
 const ERROR_MAP: Record<SandboxErrorKind, CallErrorKind> = {
   syntax: "code_syntax",
@@ -55,6 +60,13 @@ async function executeCode(pool: McpPool, call: ToolCall, options: ConditionOpti
   return { ok: result.ok, errorKind, text: result.output, mcpCalls, truncated: result.truncated };
 }
 
+/** The text-protocol action: the first fenced code block in a reply. */
+export function extractCodeBlock(content: string): ToolCall | undefined {
+  const m = content.match(/```(?:ts|typescript|js|javascript)?[ \t]*\r?\n([\s\S]*?)```/);
+  if (!m || !m[1]!.trim()) return undefined;
+  return { id: "text_0", name: "execute_code", arguments: { code: m[1]! } };
+}
+
 /** Recover code from a reply that contains a fenced code block instead of a tool call. */
 export function recoverCodeBlock(content: string): ToolCall | undefined {
   const m = content.match(/```(?:ts|typescript|js|javascript)\s*\n([\s\S]*?)```/);
@@ -65,15 +77,17 @@ export function recoverCodeBlock(content: string): ToolCall | undefined {
 /** Condition C: the full generated TypeScript API is placed in the system prompt; one execute_code tool. */
 export function createCodeModeCondition(pool: McpPool, options: ConditionOptions): Condition {
   const declarations = generateDeclarations(pool.tools, { header: false });
+  const protocol = options.codeProtocol ?? "tool";
   return {
     id: "codemode",
-    systemPrompt: () => `${BASE_SYSTEM_PROMPT}\n\n${SANDBOX_RULES}\n\nAvailable API:\n\`\`\`ts\n${declarations}\`\`\``,
-    tools: () => [EXECUTE_CODE_TOOL],
+    systemPrompt: () => `${BASE_SYSTEM_PROMPT}\n\n${sandboxRules(protocol)}\n\nAvailable API:\n\`\`\`ts\n${declarations}\`\`\``,
+    tools: () => (protocol === "tool" ? [EXECUTE_CODE_TOOL] : []),
     handle: (call) =>
       call.name === "execute_code"
         ? executeCode(pool, call, options)
         : Promise.resolve({ ok: false, errorKind: "unknown_tool", text: `Error: unknown tool '${call.name}'. Use execute_code.`, mcpCalls: [] }),
-    recoverFromText: recoverCodeBlock,
+    recoverFromText: (content) => (protocol === "tool" ? recoverCodeBlock(content) : undefined),
+    ...(protocol === "text" ? { parseTextAction: extractCodeBlock } : {}),
   };
 }
 
@@ -94,11 +108,12 @@ const READ_API_TOOL: ToolDefinition = {
  */
 export function createCodeModeDiscoveryCondition(pool: McpPool, options: ConditionOptions): Condition {
   const summaries = summariseServers(pool.tools);
+  const protocol = options.codeProtocol ?? "tool";
   return {
     id: "codemode_discovery",
     systemPrompt: () =>
-      `${BASE_SYSTEM_PROMPT}\n\n${SANDBOX_RULES}\n- The API is not shown up front. Call list_apis to see the namespaces, then read_api to get the TypeScript declarations you need before writing code.`,
-    tools: () => [LIST_APIS_TOOL, READ_API_TOOL, EXECUTE_CODE_TOOL],
+      `${BASE_SYSTEM_PROMPT}\n\n${sandboxRules(protocol)}\n- The API is not shown up front. Call list_apis to see the namespaces, then read_api to get the TypeScript declarations you need before writing code.`,
+    tools: () => (protocol === "tool" ? [LIST_APIS_TOOL, READ_API_TOOL, EXECUTE_CODE_TOOL] : [LIST_APIS_TOOL, READ_API_TOOL]),
     async handle(call) {
       if (call.name === "list_apis") {
         return { ok: true, text: JSON.stringify({ namespaces: summaries }), mcpCalls: [] };
@@ -114,6 +129,7 @@ export function createCodeModeDiscoveryCondition(pool: McpPool, options: Conditi
       if (call.name === "execute_code") return executeCode(pool, call, options);
       return { ok: false, errorKind: "unknown_tool", text: `Error: unknown tool '${call.name}'`, mcpCalls: [] };
     },
-    recoverFromText: recoverCodeBlock,
+    recoverFromText: (content) => (protocol === "tool" ? recoverCodeBlock(content) : undefined),
+    ...(protocol === "text" ? { parseTextAction: extractCodeBlock } : {}),
   };
 }

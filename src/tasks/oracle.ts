@@ -1,4 +1,4 @@
-import type { EpisodeContext } from "../agent/episode.js";
+import { TEXT_RESULT_PREFIX, type EpisodeContext } from "../agent/episode.js";
 import { ScriptedBackend, type ScriptedTurn } from "../llm/mock.js";
 import type { ChatMessage, LLMBackend } from "../llm/types.js";
 
@@ -117,6 +117,11 @@ export function createOracleBackend(ctx: EpisodeContext): LLMBackend {
             const namespaces = [...new Set(required.map((r) => pool.tools.find((t) => t.name === r)!.server))];
             return { toolCalls: namespaces.map((namespace) => ({ name: "read_api", arguments: { namespace } })) };
           }
+        }
+        if (spec.codeProtocol === "text") {
+          const output = messages.filter((m) => m.role === "user" && m.content.startsWith(TEXT_RESULT_PREFIX)).at(-1);
+          if (!output) return { content: "```ts\n" + wrapOracleForSandbox(source) + "\n```" };
+          return { content: output.content.slice(TEXT_RESULT_PREFIX.length).trim() };
         }
         const last = history.filter((h) => h.name === "execute_code").at(-1);
         if (!last) return { toolCalls: [{ name: "execute_code", arguments: { code: wrapOracleForSandbox(source) } }] };

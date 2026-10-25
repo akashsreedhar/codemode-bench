@@ -72,8 +72,8 @@ flowchart LR
    |---|---|---|---|
    | A | **Direct tool calling** | Every MCP tool as a native function | all exposed tools |
    | B | **Tool search** | Meta-tools to search and load tools on demand | `search_tools`, `load_tools` (+ loaded tools) |
-   | C | **Code Mode** | The generated TypeScript API in the system prompt | `execute_code` |
-   | D | **Code Mode + discovery** | No API up front; declarations loaded on demand | `list_apis`, `read_api`, `execute_code` |
+   | C | **Code Mode** | The generated TypeScript API in the system prompt | `execute_code` tool, or a ```ts block in the reply |
+   | D | **Code Mode + discovery** | No API up front; declarations loaded on demand | `list_apis`, `read_api`, then code as in C |
 
    Condition B controls for "fewer tool definitions in context" without code execution. Condition D controls for "a large API in the prompt". Together they help separate *why* Code Mode helps, if it does.
 
@@ -104,7 +104,7 @@ Requirements: Node.js ≥ 20. For real model runs you also need [Ollama](https:/
 
 ```bash
 npm ci
-npm test                 # 257 tests: sandbox isolation, codegen, servers, verifiers, providers, runner
+npm test                 # 338 tests: sandbox isolation, codegen, servers, verifiers, providers, runner
 npm run bench:ci         # every task × every condition via reference solutions (no model, ~15 s)
 npm run tasks            # list the task suite
 npm run sizes            # static context cost per condition

@@ -37,7 +37,14 @@ export interface ConditionOptions {
   sandbox: Partial<SandboxOptions>;
   /** Maximum characters of a tool result returned to the model (applies to all conditions). */
   maxResultChars: number;
+  /**
+   * How Code Mode conditions receive code: as an `execute_code` tool call, or as a fenced
+   * code block in the reply (the CodeAct/smolagents style). Defaults to "tool".
+   */
+  codeProtocol?: CodeProtocol;
 }
+
+export type CodeProtocol = "tool" | "text";
 
 export interface Condition {
   readonly id: ConditionId;
@@ -47,6 +54,11 @@ export interface Condition {
   handle(call: ToolCall): Promise<HandledCall>;
   /** Lenient parsing: recover a tool call from a plain-text reply (common with small models). */
   recoverFromText(content: string): ToolCall | undefined;
+  /**
+   * Primary text protocol: an action expressed in plain text (e.g. a code block) that the
+   * condition always accepts. Results are returned to the model as a user message.
+   */
+  parseTextAction?(content: string): ToolCall | undefined;
 }
 
 export const BASE_SYSTEM_PROMPT = `You are an operations assistant for Acme Ops, a B2B software company. You complete tasks for the customer operations team using the capabilities available to you.

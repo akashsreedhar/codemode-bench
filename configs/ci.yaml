@@ -4,6 +4,7 @@
 name: ci
 description: Reference solutions through all conditions (harness self-test)
 maxTurns: 20
+codeModeProtocol: text
 output: results/ci
 cache: false
 models:

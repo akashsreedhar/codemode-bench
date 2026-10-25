@@ -1,4 +1,4 @@
-import { createCondition, type CallErrorKind, type ConditionId } from "../conditions/index.js";
+import { createCondition, type CallErrorKind, type CodeProtocol, type ConditionId } from "../conditions/index.js";
 import type { SandboxOptions } from "../codemode/sandbox.js";
 import { ContextOverflowError, type ChatMessage, type LLMBackend, type ToolCall } from "../llm/types.js";
 import { McpPool } from "../mcp/pool.js";
@@ -21,6 +21,8 @@ export interface EpisodeSpec {
   maxResultChars: number;
   /** Wall-clock limit for the whole run; exceeding it is recorded as failureMode "time_limit". */
   maxRunSeconds?: number;
+  /** How Code Mode conditions receive code (see ConditionOptions.codeProtocol). */
+  codeProtocol?: CodeProtocol;
 }
 
 /** Everything a backend factory may need, e.g. to script the reference solution. */
@@ -72,6 +74,9 @@ export interface EpisodeResult {
   turnLog: TurnRecord[];
 }
 
+/** Prefix of the user message that carries the result of a text-protocol action. */
+export const TEXT_RESULT_PREFIX = "Execution output:";
+
 const worldCache = new Map<number, World>();
 function baseWorld(seed: number): World {
   if (!worldCache.has(seed)) worldCache.set(seed, generateWorld(seed));
@@ -112,7 +117,7 @@ export async function runEpisode(spec: EpisodeSpec, backendFactory: BackendFacto
   const pool = new McpPool();
   for (const s of createServers(world, exposure)) await pool.addInMemory(s.name, s.server);
 
-  const condition = createCondition(spec.condition, pool, { sandbox: spec.sandbox, maxResultChars: spec.maxResultChars });
+  const condition = createCondition(spec.condition, pool, { sandbox: spec.sandbox, maxResultChars: spec.maxResultChars, codeProtocol: spec.codeProtocol });
   const backend = backendFactory({ spec, params, pool });
   const messages: ChatMessage[] = [
     { role: "system", content: condition.systemPrompt() },
@@ -185,6 +190,14 @@ export async function runEpisode(spec: EpisodeSpec, backendFactory: BackendFacto
 
       let calls: ToolCall[] = response.toolCalls;
       let recovered = false;
+      let viaText = false;
+      if (calls.length === 0 && condition.parseTextAction) {
+        const action = condition.parseTextAction(response.content);
+        if (action) {
+          calls = [{ ...action, id: `text_${turn}` }];
+          viaText = true;
+        }
+      }
       if (calls.length === 0 && spec.lenientParsing) {
         const r = condition.recoverFromText(response.content);
         if (r) {
@@ -204,7 +217,7 @@ export async function runEpisode(spec: EpisodeSpec, backendFactory: BackendFacto
         toolCalls: calls.length,
         recoveredFromText: recovered,
       });
-      messages.push({ role: "assistant", content: response.content, ...(calls.length ? { toolCalls: calls } : {}) });
+      messages.push({ role: "assistant", content: response.content, ...(calls.length && !viaText ? { toolCalls: calls } : {}) });
 
       if (calls.length === 0) {
         result.answer = response.content;
@@ -218,7 +231,8 @@ export async function runEpisode(spec: EpisodeSpec, backendFactory: BackendFacto
         result.distractorCalls += handled.mcpCalls.filter((c) => isDistractorTool(c.name)).length;
         if (handled.errorKind) result.errorCounts[handled.errorKind] = (result.errorCounts[handled.errorKind] ?? 0) + 1;
         if (handled.truncated) result.truncatedResults++;
-        messages.push({ role: "tool", content: handled.text, toolCallId: call.id, name: call.name });
+        if (viaText) messages.push({ role: "user", content: `${TEXT_RESULT_PREFIX}\n${handled.text}` });
+        else messages.push({ role: "tool", content: handled.text, toolCallId: call.id, name: call.name });
       }
     }
     if (!finished) result.failureMode = "turn_limit";

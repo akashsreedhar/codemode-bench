@@ -38,7 +38,7 @@ All conditions share the base system prompt in `src/conditions/types.ts`, the sa
 
 - **A · Direct.** Every exposed MCP tool is offered as a native function (name, description, input JSON Schema). Results are returned verbatim as JSON text.
 - **B · Tool search.** Only `search_tools` (keyword relevance over names and descriptions) and `load_tools` are offered at first. Loaded tools become native functions on later turns. Calling an unloaded tool returns an error.
-- **C · Code Mode.** The system prompt contains TypeScript declarations generated from the exposed tools' schemas (`src/codemode/codegen.ts`): an input interface, an output interface (from `outputSchema`, else `unknown`) and a documented method on `declare const codemode`. The only tool is `execute_code`.
+- **C · Code Mode.** The system prompt contains TypeScript declarations generated from the exposed tools' schemas (`src/codemode/codegen.ts`): an input interface, an output interface (from `outputSchema`, else `unknown`) and a documented method on `declare const codemode`. Code reaches the sandbox in one of two ways (`codeModeProtocol`). With `tool`, it arrives as the argument of an `execute_code` tool call. With `text`, the default for the published configs, the model writes a fenced ```ts block in its reply, and the output comes back in the next user message. The text protocol exists because Ollama discards tool calls whose JSON arguments are invalid, which small models often produce when embedding code (see `HYPOTHESES.md`).
 - **D · Code Mode + discovery.** No declarations up front. `list_apis` returns one-line summaries per namespace (MCP server), `read_api` returns the declarations for one namespace, and `execute_code` runs code.
 
 ### The Code Mode sandbox

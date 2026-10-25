@@ -25,6 +25,14 @@ describe("task suite", () => {
     expect(TASKS.filter((t) => t.pilot)).toHaveLength(15);
   });
 
+  describe.each(["codemode", "codemode_discovery"] as const)("reference solutions through %s (text protocol)", (condition) => {
+    it.each(TASKS.map((t) => [t.id, t] as const))("%s is solvable", async (_id, task) => {
+      const r = await runEpisode({ ...spec(task, condition), codeProtocol: "text" }, createOracleBackend);
+      expect(r.outcome, r.verification?.details ?? r.providerError).toBe("success");
+      expect(r.recoveredFromText).toBe(0);
+    });
+  });
+
   describe.each(CONDITION_IDS)("reference solutions through %s", (condition) => {
     it.each(TASKS.map((t) => [t.id, t] as const))("%s is solvable", async (_id, task) => {
       const r = await runEpisode(spec(task, condition), createOracleBackend);
@@ -85,6 +93,24 @@ describe("task suite", () => {
     expect(r.outcome).toBe("success");
     const strict = await runEpisode({ ...spec(task, "codemode"), lenientParsing: false }, textual);
     expect(strict.outcome).toBe("failure");
+  });
+
+  it("returns text-protocol results as a user message and offers no execute_code tool", async () => {
+    const task = TASKS.find((t) => t.id === "lookup-customer-email")!;
+    const seenTools: string[][] = [];
+    const coder: BackendFactory = () =>
+      new ScriptedBackend("coder", "coder", ({ messages, tools }) => {
+        seenTools.push(tools.map((t) => t.name));
+        const out = messages.filter((m) => m.role === "user").at(-1)!.content;
+        return out.startsWith("Execution output:")
+          ? { content: out.split("\n")[1]! }
+          : { content: '```ts\nconst c = await codemode.crm_get_customer({ customer_id: "C017" });\nconsole.log(c.email);\n```' };
+      });
+    const r = await runEpisode({ ...spec(task, "codemode"), codeProtocol: "text" }, coder);
+    expect(r.outcome).toBe("success");
+    expect(r.recoveredFromText).toBe(0);
+    expect(seenTools.every((t) => t.length === 0)).toBe(true);
+    expect(r.messages.some((m) => m.role === "tool")).toBe(false);
   });
 
   it("counts PII that reaches the model context", async () => {
