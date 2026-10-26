@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { runEpisode, type BackendFactory, type EpisodeSpec } from "../src/agent/episode.js";
+import { isSuspendedOverrun, runEpisode, type BackendFactory, type EpisodeSpec } from "../src/agent/episode.js";
 import { CONDITION_IDS } from "../src/conditions/types.js";
 import { ScriptedBackend } from "../src/llm/mock.js";
 import { TASKS } from "../src/tasks/suite.js";
@@ -78,6 +78,13 @@ describe("task suite", () => {
     const r = await runEpisode({ ...spec(task, "direct"), maxRunSeconds: 1 }, slow);
     expect(r.failureMode).toBe("time_limit");
     expect(r.turns).toBeLessThan(20);
+  });
+
+  it("distinguishes a suspended host from an ordinary time-limit overrun", () => {
+    expect(isSuspendedOverrun(905_000, 900)).toBe(false); // scheduling jitter
+    expect(isSuspendedOverrun(1_300_000, 900)).toBe(false);
+    expect(isSuspendedOverrun(16_610_316, 900)).toBe(true); // the machine slept for hours
+    expect(isSuspendedOverrun(1_900, 1)).toBe(false); // short limits get at least 60 s of slack
   });
 
   it("recovers code blocks from plain-text replies when lenient parsing is on", async () => {

@@ -106,6 +106,15 @@ function countPii(messages: ChatMessage[], world: World): number {
   return n;
 }
 
+/**
+ * True when a run overshot its time limit by far more than scheduling jitter allows
+ * (50% and at least 60 s), which indicates the host was suspended mid-run.
+ */
+export function isSuspendedOverrun(wallMs: number, maxRunSeconds: number): boolean {
+  const limitMs = maxRunSeconds * 1000;
+  return wallMs > Math.max(limitMs * 1.5, limitMs + 60_000);
+}
+
 /** Run one task under one condition with one model, from a fresh world. */
 export async function runEpisode(spec: EpisodeSpec, backendFactory: BackendFactory): Promise<EpisodeResult> {
   const started = Date.now();
@@ -254,6 +263,13 @@ export async function runEpisode(spec: EpisodeSpec, backendFactory: BackendFacto
     result.piiExposed = countPii(messages, initial);
     result.wallMs = Date.now() - started;
     await pool.close();
+  }
+  // A time limit that fired far later than scheduled means the host was suspended (e.g. the
+  // machine slept). That says nothing about the model, so treat it as a retriable infrastructure error.
+  if (result.failureMode === "time_limit" && spec.maxRunSeconds && isSuspendedOverrun(result.wallMs, spec.maxRunSeconds)) {
+    result.outcome = "error";
+    result.failureMode = undefined;
+    result.providerError = `run stalled for ${Math.round(result.wallMs / 1000)} s (limit ${spec.maxRunSeconds} s); host likely suspended`;
   }
   return result;
 }
